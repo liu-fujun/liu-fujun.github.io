@@ -1,0 +1,320 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>k8s中控制器详解 | Liu's Blog</title><meta name="keywords" content="k8s,kubernetes,controller,容器"><meta name="author" content="Liu Fujun"><meta name="copyright" content="Liu Fujun"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="常见Pod控制器 ReplicaSet:适合无状态的服务部署用户创建指定数量的pod副本数量，确保pod副本数量符合预期状态，并且支持滚动式自动扩容和缩容功能。ReplicaSet主要三个组件组成：（1）用户期望的pod副本数量（2）标签选择器，判断哪个pod归自己管理（3）当现存的pod数量不足，会根据pod资源模板进行新建帮助用户管理无状态的pod资源，精确反应用户定义的目标数量，但是Reli">
+<meta property="og:type" content="article">
+<meta property="og:title" content="k8s中控制器详解">
+<meta property="og:url" content="https://liu-fujun.github.io/2022/02/08/k8s-controller/index.html">
+<meta property="og:site_name" content="Liu&#39;s Blog">
+<meta property="og:description" content="常见Pod控制器 ReplicaSet:适合无状态的服务部署用户创建指定数量的pod副本数量，确保pod副本数量符合预期状态，并且支持滚动式自动扩容和缩容功能。ReplicaSet主要三个组件组成：（1）用户期望的pod副本数量（2）标签选择器，判断哪个pod归自己管理（3）当现存的pod数量不足，会根据pod资源模板进行新建帮助用户管理无状态的pod资源，精确反应用户定义的目标数量，但是Reli">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://liu-fujun.github.io/img/k8s.png">
+<meta property="article:published_time" content="2022-02-08T07:40:43.000Z">
+<meta property="article:modified_time" content="2022-02-09T08:50:24.909Z">
+<meta property="article:author" content="Liu Fujun">
+<meta property="article:tag" content="k8s">
+<meta property="article:tag" content="kubernetes">
+<meta property="article:tag" content="容器">
+<meta property="article:tag" content="controller">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://liu-fujun.github.io/img/k8s.png"><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://liu-fujun.github.io/2022/02/08/k8s-controller/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":false,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'k8s中控制器详解',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-02-09 16:50:24'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.0.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/LFJ.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data is-center"><div class="data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a></div><div class="data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a></div><div class="data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/"><i class="fa-fw fas fa-code"></i><span> 技术</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E5%85%B6%E4%BB%96/"><i class="fa-fw fas fa-folder"></i><span> 其他</span></a></div><div class="menus_item"><a class="site-page group hide" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 管理</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/k8s.png')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Liu's Blog</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/"><i class="fa-fw fas fa-code"></i><span> 技术</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E5%85%B6%E4%BB%96/"><i class="fa-fw fas fa-folder"></i><span> 其他</span></a></div><div class="menus_item"><a class="site-page group hide" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 管理</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">k8s中控制器详解</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-02-08T07:40:43.000Z" title="发表于 2022-02-08 15:40:43">2022-02-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-02-09T08:50:24.909Z" title="更新于 2022-02-09 16:50:24">2022-02-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/">技术文档</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="k8s中控制器详解"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="常见Pod控制器"><a href="#常见Pod控制器" class="headerlink" title="常见Pod控制器"></a>常见Pod控制器</h2><ol>
+<li>ReplicaSet:适合无状态的服务部署<br>用户创建指定数量的pod副本数量，确保pod副本数量符合预期状态，并且支持滚动式自动扩容和缩容功能。<br>ReplicaSet主要三个组件组成：<br>（1）用户期望的pod副本数量<br>（2）标签选择器，判断哪个pod归自己管理<br>（3）当现存的pod数量不足，会根据pod资源模板进行新建<br>帮助用户管理无状态的pod资源，精确反应用户定义的目标数量，但是RelicaSet不是直接使用的控制器，而是使用Deployment。</li>
+<li>deployment：适合无状态的服务部署工作在ReplicaSet之上，用于管理无状态应用，目前来说最好的控制器。支持滚动更新和回滚功能，还提供声明式配置。</li>
+<li>StatefullSet：适合有状态的服务部署。需要学完存储卷后进行系统学习。</li>
+<li>DaemonSet：一次部署，所有的node节点都会部署，例如一些典型的应用场景：<ul>
+<li>运行集群存储 daemon，例如在每个Node上运行 glusterd、ceph</li>
+<li>在每个Node上运行日志收集 daemon，例如 fluentd、 logstash</li>
+<li>在每个Node上运行监控 daemon，例如 Prometheus Node Exporter<br>用于确保集群中的每一个节点只运行特定的pod副本，通常用于实现系统级后台任务。比如ELK服<br>务<br>特性：服务是无状态的<br>服务必须是守护进程</li>
+</ul>
+</li>
+<li>Job：一次性的执行任务。 只要完成就立即退出，不需要重启或重建。</li>
+<li>Cronjob：周期性的执行任务。 周期性任务控制，不需要持续后台运行。</li>
+</ol>
+<h2 id="ReplicaSet"><a href="#ReplicaSet" class="headerlink" title="ReplicaSet"></a>ReplicaSet</h2><p>&emsp;&emsp;ReplicationController用来确保容器应用的副本数始终保持在用户定义的副本数，即如果有容器异常退出，会自动创建新的Pod来替代；而如果异常多出来的容器也会自动回收。<br>&emsp;&emsp;ReplicaSet跟ReplicationController没有本质的不同，只是名字不一样，并且ReplicaSet支持集合式的selector。<br>&emsp;&emsp;虽然ReplicaSet可以独立使用，但一般还是建议使用 Deployment 来自动管理ReplicaSet，这样就无需担心跟其他机制的不兼容问题（比如ReplicaSet不支持rolling-update但Deployment支持）。</p>
+<h3 id="ReplicationController"><a href="#ReplicationController" class="headerlink" title="ReplicationController"></a>ReplicationController</h3><p>Replication Controller 简称 RC，实际上 RC 和 RS 的功能几乎一致，唯一的一个区别就是 RC 只支持基于等式的 selector（env=dev或environment!=qa），但 RS 还支持基于集合的 selector。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> rc</span></span><br><span class="line">selector: </span><br><span class="line">  app: nginx</span><br><span class="line"><span class="meta">  </span></span><br><span class="line"><span class="meta">#</span><span class="bash"> rs</span></span><br><span class="line">selector:  </span><br><span class="line">  matchLabels:</span><br><span class="line">    app: nginx</span><br><span class="line"></span><br><span class="line">---</span><br><span class="line">selector:</span><br><span class="line">  matchExpressions:  # 该选择器要求 Pod 包含名为 app 的标签</span><br><span class="line">  - key: app</span><br><span class="line">    operator: In</span><br><span class="line">    values:  # 并且标签的值必须是 nginx</span><br><span class="line">    - nginx </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="ReplicaSet模板说明"><a href="#ReplicaSet模板说明" class="headerlink" title="ReplicaSet模板说明"></a>ReplicaSet模板说明</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span>        <span class="comment">#api版本定义</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ReplicaSet</span>           <span class="comment">#定义资源类型为ReplicaSet</span></span><br><span class="line"><span class="attr">metadata:</span>                  <span class="comment">#元数据定义</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">replicasetdemo</span>  </span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">replicasetdemo</span></span><br><span class="line"><span class="attr">spec:</span>                       <span class="comment">#ReplicaSet的规格定义</span></span><br><span class="line">  <span class="attr">replicas:</span> <span class="number">3</span>               <span class="comment">#定义副本数量为3个</span></span><br><span class="line">  <span class="attr">template:</span>            <span class="comment">#pod的模板定义</span></span><br><span class="line">    <span class="attr">metadata:</span>         <span class="comment">#pod的元数据定义</span></span><br><span class="line">      <span class="attr">name:</span> <span class="string">replicasetdemo</span>  <span class="comment">#自定义pod的名称</span></span><br><span class="line">      <span class="attr">labels:</span>              <span class="comment">#定义pod的标签，需要和selector定义的标签一致，也可以多出其他标签</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">replicasetdemo</span></span><br><span class="line">    <span class="attr">spec:</span>         <span class="comment">#pod的规格定义</span></span><br><span class="line">      <span class="attr">containers:</span>    <span class="comment">#容器定义</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">replicasetdemo</span>    <span class="comment">#容器名称</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">nginx:1.17.10-alpine</span> <span class="comment">#容器镜像</span></span><br><span class="line">          <span class="attr">imagePullPolicy:</span> <span class="string">IfNotPresent</span></span><br><span class="line">          <span class="attr">ports:</span>  <span class="comment">#暴露端口</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">80</span></span><br><span class="line">      <span class="attr">restartPolicy:</span> <span class="string">Always</span></span><br><span class="line">  <span class="attr">selector:</span>    <span class="comment">#标签选择器，定义匹配pod的标签</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">replicasetdemo</span></span><br></pre></td></tr></table></figure>
+
+<p>当然，可以通过kubectl命令行方式获取更加详细信息：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">kubectl explain rs</span><br><span class="line">kubectl explain rs.spec</span><br><span class="line">kubectl explain rs.spec.template.spec</span><br></pre></td></tr></table></figure>
+
+<p>常用的命令如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 运行ReplicaSet</span></span><br><span class="line">kubectl apply -f replicasetdemo.yml</span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看rs控制器</span></span><br><span class="line">kubectl get rs</span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看pod信息</span></span><br><span class="line">kubectl get pod</span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看pod详细信息</span></span><br><span class="line">kubectl describe pod replicasetdemo-7fdd7b5f67-5gzfg</span><br><span class="line"><span class="meta">#</span><span class="bash"> 测试controller控制器下的pod删除、重新被controller控制器拉起</span></span><br><span class="line">kubectl delete pod --all</span><br><span class="line">kubectl get pod</span><br><span class="line"><span class="meta">#</span><span class="bash"> 修改pod的副本数量:通过命令行方式</span></span><br><span class="line">kubectl scale replicaset replicasetdemo --replicas=8</span><br><span class="line">kubectl get rs</span><br><span class="line"><span class="meta">#</span><span class="bash"> 修改pod的副本数量:通过资源清单方式</span></span><br><span class="line">kubectl edit replicasets.apps replicasetdemo</span><br><span class="line">kubectl get rs</span><br><span class="line"><span class="meta">#</span><span class="bash"> 显示pod的标签</span></span><br><span class="line">kubectl get pod --show-labels</span><br><span class="line"><span class="meta">#</span><span class="bash"> 修改pod标签(label)</span></span><br><span class="line">kubectl label pod replicasetdemo-652lc app=lagou --overwrite=True</span><br><span class="line"><span class="meta">#</span><span class="bash"> 再次显示pod的标签：发现多了一个pod，原来的rs中又重新拉起一个pod，说明rs是通过label去管理pod</span></span><br><span class="line">kubectl get pod --show-labels</span><br><span class="line"><span class="meta">#</span><span class="bash"> 删除rs</span></span><br><span class="line">kubectl delete rs replicasetdemo</span><br></pre></td></tr></table></figure>
+
+<p>最后，总结一下RC（ReplicaSet）的一些特性和作用：</p>
+<ul>
+<li>在绝大多数情况下，我们通过定义一个RC实现Pod的创建及副本数量的自动控制;</li>
+<li>在RC里包括完整的Pod定义模板;</li>
+<li>RC通过Label Selector机制实现对Pod副本的自动控制;</li>
+<li>通过改变RC里Pod副本数量，可以实现Pod的扩容和缩容;</li>
+<li>通过改变RC里Pod模板中的镜像版本，可以实现滚动升级;</li>
+</ul>
+<h2 id="Deployment"><a href="#Deployment" class="headerlink" title="Deployment"></a>Deployment</h2><p>&emsp;&emsp;Deployment是kubernetes在1.2版本中引入的新概念，用于更好的解决Pod的编排问题，为此，Deployment在内部使用了ReplicaSet来实现目的，我们可以把Deployment理解为ReplicaSet的一次升<br>级，两者的相似度超过90%<br>Deployment的使用场景有以下几个：</p>
+<ul>
+<li>创建一个Deployment对象来生成对应的ReplicaSet并完成Pod副本的创建；</li>
+<li>检查Deployment的状态来看部署动作是否完成（Pod副本数量是否达到了预期的值）；</li>
+<li>更新Deployment以创建新的Pod（比如镜像升级）；</li>
+<li>如果当前Deployment不稳定，可以回滚到一个早先的Deployment版本；</li>
+<li>暂停Deployment以便于一次性修改多个PodTemplateSpec的配置项，之后在恢复Deployment，进行新的发布；</li>
+<li>扩展Deployment以应对高负载；</li>
+<li>查看Deployment的状态，以此作为发布是否成功的标志；</li>
+<li>清理不在需要的旧版本ReplicaSet；</li>
+</ul>
+<p>详细信息可以使用如下命令：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">kubectl explain deploy</span><br><span class="line">kubectl explain deploy.spec</span><br><span class="line">kubectl explain deploy.spec.template.spec</span><br></pre></td></tr></table></figure>
+
+<p>Pod 依赖的控制器 RS 实际上被的 Deployment 控制着，<br>Pod、ReplicaSet、Deployment 三者之间的关系图如下：<br><img src="/2022/02/08/k8s-controller/deployment.png" alt="deployment.png"></p>
+<h3 id="Deployment模板说明"><a href="#Deployment模板说明" class="headerlink" title="Deployment模板说明"></a>Deployment模板说明</h3><p>基本与ReplicaSet一致。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span>        <span class="comment">#api版本定义</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span>           <span class="comment">#定义资源类型为Deployment</span></span><br><span class="line"><span class="attr">metadata:</span>                  <span class="comment">#元数据定义</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">deploymentdemo</span>  </span><br><span class="line">  <span class="attr">labels:</span></span><br><span class="line">    <span class="attr">app:</span> <span class="string">deploymentdemo</span></span><br><span class="line"><span class="attr">spec:</span>                       <span class="comment">#ReplicaSet的规格定义</span></span><br><span class="line">  <span class="attr">replicas:</span> <span class="number">3</span>               <span class="comment">#定义副本数量为3个</span></span><br><span class="line">  <span class="attr">template:</span>            <span class="comment">#pod的模板定义</span></span><br><span class="line">    <span class="attr">metadata:</span>         <span class="comment">#pod的元数据定义</span></span><br><span class="line">      <span class="attr">name:</span> <span class="string">deploymentdemo</span>  <span class="comment">#自定义pod的名称</span></span><br><span class="line">      <span class="attr">labels:</span>              <span class="comment">#定义pod的标签，需要和selector定义的标签一致，也可以多出其他标签</span></span><br><span class="line">        <span class="attr">app:</span> <span class="string">deploymentdemo</span></span><br><span class="line">    <span class="attr">spec:</span>         <span class="comment">#pod的规格定义</span></span><br><span class="line">      <span class="attr">containers:</span>    <span class="comment">#容器定义</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">deploymentdemo</span>    <span class="comment">#容器名称</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">nginx:1.17.10-alpine</span> <span class="comment">#容器镜像</span></span><br><span class="line">          <span class="attr">imagePullPolicy:</span> <span class="string">IfNotPresent</span></span><br><span class="line">          <span class="attr">ports:</span>  <span class="comment">#暴露端口</span></span><br><span class="line">            <span class="bullet">-</span> <span class="attr">containerPort:</span> <span class="number">80</span></span><br><span class="line">      <span class="attr">restartPolicy:</span> <span class="string">Always</span></span><br><span class="line">  <span class="attr">minReadySeconds:</span> <span class="number">5</span> <span class="comment"># k8s在等待设置的时间后才进行升级。默认为0</span></span><br><span class="line">  <span class="attr">strategy:</span> <span class="comment"># 更新策略</span></span><br><span class="line">     <span class="attr">type:</span> <span class="string">RollingUpdate</span>  <span class="comment"># 指定更新策略：滚动更新RollingUpdate和全部重新创建Recreate</span></span><br><span class="line">     <span class="attr">rollingUpdate:</span></span><br><span class="line">        <span class="attr">maxSurge:</span> <span class="number">1</span> <span class="comment"># 最多可以比原先设置多出的 Pod 数量</span></span><br><span class="line">        <span class="attr">maxUnavailable:</span> <span class="number">1</span> <span class="comment"># 升级过程中最多有多少个 Pod 处于无法提供服务的状态</span></span><br><span class="line">  <span class="attr">selector:</span>    <span class="comment">#标签选择器，定义匹配pod的标签</span></span><br><span class="line">    <span class="attr">matchLabels:</span></span><br><span class="line">      <span class="attr">app:</span> <span class="string">deploymentdemo</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="镜像更新命令"><a href="#镜像更新命令" class="headerlink" title="镜像更新命令"></a>镜像更新命令</h3><p>通过命令行修改镜像版本：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 升级nginx镜像版本为1.18.0</span></span><br><span class="line">kubectl set image deployment deploymentdemo deploymentdemo=nginx:1.18.0-alpine</span><br><span class="line"><span class="meta"></span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 通过属性修改达到升级nginx镜像版本为1.19.2-alpine，与上面的命令二选一即可</span></span><br><span class="line">kubectl edit deployments.apps deploymentdemo</span><br><span class="line"><span class="meta"></span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看pod升级情况</span></span><br><span class="line">kubectl get pods -w</span><br><span class="line"><span class="meta">#</span><span class="bash"> 进去某一个pod内部，查看nginx升级版本信息</span></span><br><span class="line">kubectl exec -it deploymentdemo1-df6bc5d4c-flc7b sh</span><br><span class="line">nginx -v</span><br><span class="line">exit</span><br></pre></td></tr></table></figure>
+
+<h3 id="滚动更新"><a href="#滚动更新" class="headerlink" title="滚动更新"></a>滚动更新</h3><p>部署更新相关，可以参考<a href="../../09/deploy-desc">关于蓝绿发布、灰度以及滚动发布的记录</a></p>
+<h4 id="金丝雀发布"><a href="#金丝雀发布" class="headerlink" title="金丝雀发布"></a>金丝雀发布</h4><p>&emsp;&emsp;Deployment控制器支持自定义控制更新过程中的滚动节奏，如“暂停(pause)”或“继续(resume)”更新操作。比如等待第一批新的Pod资源创建完成后立即暂停更新过程，此时，仅存在一部分新版本的应用，主体部分还是旧的版本。然后，再筛选一小部分的用户请求路由到新版本的Pod应用，继续观察能否稳定地按期望的方式运行。确定没问题之后再继续完成余下的Pod资源滚动更新，否则立即回滚更新操作。这就是所谓的金丝雀发布（Canary Release）</p>
+<p>滚动更新命令如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash"> 更新deployment的nginx:1.18.0-alpine版本，并配置暂停deployment</span></span><br><span class="line">kubectl set image deployment deploymentdemo1 deploymentdemo1=nginx:1.18.0-</span><br><span class="line">alpine &amp;&amp; kubectl rollout pause deployment deploymentdemo1</span><br><span class="line"><span class="meta">#</span><span class="bash"> 观察更新状态</span></span><br><span class="line">kubectl rollout status deployment deploymentdemo1</span><br><span class="line"><span class="meta">#</span><span class="bash"> 监控更新的过程，可以看到已经新增了一个资源，但是并未按照预期的状态去删除一个旧的资源，就是因为使用了pause暂停命令</span></span><br><span class="line">kubectl get pods -l app=deploymentdemo1 -w</span><br><span class="line"><span class="meta">#</span><span class="bash"> 确保更新的pod没问题了，继续更新</span></span><br><span class="line">kubectl rollout resume deploy deploymentdemo1</span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看最后的更新情况</span></span><br><span class="line">kubectl get pods -l app=deploymentdemo1 -w</span><br></pre></td></tr></table></figure>
+
+<h3 id="版本回退"><a href="#版本回退" class="headerlink" title="版本回退"></a>版本回退</h3><p>&emsp;&emsp;默认情况下，kubernetes 会在系统中保存前两次的 Deployment 的 rollout 历史记录，以便可以随时回退（您可以修改revision history limit 来更改保存的revision数）。</p>
+<blockquote>
+<p>注意： 只要 Deployment 的 rollout 被触发就会创建一个 revision。也就是说当且仅当Deployment 的 Pod template（如.spec.template ）被更改，例如更新template 中的 label 和容器镜像时，就会创建出一个新的 revision。<br>其他的更新，比如扩容 Deployment 不会创建 revision——因此我们可以很方便的手动或者自动扩容。这意味着当您回退到历史 revision 时，只有 Deployment 中的 Pod template 部分才会回退。</p>
+</blockquote>
+<h4 id="rollout常见命令"><a href="#rollout常见命令" class="headerlink" title="rollout常见命令"></a>rollout常见命令</h4><table>
+<thead>
+<tr>
+<th align="left">子命令</th>
+<th align="left">功能说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">history</td>
+<td align="left">查看rollout操作历史</td>
+</tr>
+<tr>
+<td align="left">pause</td>
+<td align="left">将提供的资源设定为暂停状态</td>
+</tr>
+<tr>
+<td align="left">restart</td>
+<td align="left">重启某资源</td>
+</tr>
+<tr>
+<td align="left">resume</td>
+<td align="left">将某资源从暂停状态恢复正常</td>
+</tr>
+<tr>
+<td align="left">status</td>
+<td align="left">查看rollout操作状态</td>
+</tr>
+<tr>
+<td align="left">undo</td>
+<td align="left">回滚前一rollout</td>
+</tr>
+</tbody></table>
+<p>具体命令示例如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">kubectl rollout history deployment deploymentdemo</span><br><span class="line"></span><br><span class="line">kubectl rollout status deployment deploymentdemo</span><br><span class="line"><span class="meta"></span></span><br><span class="line"><span class="meta">#</span><span class="bash"> 回滚版本信息</span></span><br><span class="line">kubectl rollout undo deployment deploymentdemo1</span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看pod回滚情况</span></span><br><span class="line">kubectl get pods -w</span><br></pre></td></tr></table></figure>
+
+<h3 id="更新策略"><a href="#更新策略" class="headerlink" title="更新策略"></a>更新策略</h3><p>&emsp;&emsp;Deployment 可以保证在升级时只有一定数量的 Pod 是 down 的。默认的，它会确保至少有比期望的Pod数量少一个是up状态（最多一个不可用）<br>&emsp;&emsp;Deployment 同时也可以确保只创建出超过期望数量的一定数量的 Pod。默认的，它会确保最多比期望的Pod数量多一个的 Pod 是 up 的（最多1个 surge ）</p>
+<blockquote>
+<p>Kuberentes 版本v1.17.5中，从1-1变成25%-25%</p>
+</blockquote>
+<p>查看命令如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">kubectl describe deployments.apps deploymentdemo</span><br><span class="line"><span class="meta">#</span><span class="bash"> 查看到属性：</span></span><br><span class="line"><span class="meta">#</span><span class="bash"> RollingUpdateStrategy: 25% max unavailable, 25% max surge</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="DaemonSet"><a href="#DaemonSet" class="headerlink" title="DaemonSet"></a>DaemonSet</h2><p>&emsp;&emsp;DaemonSet 确保全部Node 上运行一个 Pod 的副本。当有 Node 加入集群时，也会为他们新增一个 Pod 。当有 Node 从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有Pod。<br>&emsp;&emsp;在每一个node节点上只调度一个Pod，因此无需指定replicas的个数，比如：</p>
+<ul>
+<li>在每个node上都运行一个日志采集程序，负责收集node节点本身和node节点之上的各个Pod所产生的日志</li>
+<li>在每个node上都运行一个性能监控程序，采集该node的运行性能数据</li>
+</ul>
+<p><img src="/2022/02/08/k8s-controller/daemonset.png" alt="daemonset.png"></p>
+<p>DaemonSet 控制器是如何保证每个 Node 上有且只有一个被管理的 Pod 呢？</p>
+<ul>
+<li>首先控制器从 Etcd 获取到所有的 Node 列表，然后遍历所有的 Node。</li>
+<li>根据资源对象定义是否有调度相关的配置，然后分别检查 Node 是否符合要求。</li>
+<li>在可运行 Pod 的节点上检查是否已有对应的 Pod，如果没有，则在这个 Node 上创建该 Pod；如果有，并且数量大于 1，那就把多余的 Pod 从这个节点上删除；如果有且只有一个 Pod，那就说明是正常情况。</li>
+</ul>
+<p>DaemonSet有两种更新策略类型：</p>
+<ul>
+<li>OnDelete：这是向后兼容性的默认更新策略。使用 OnDelete 更新策略，在更新DaemonSet模板后，只有在手动删除旧的DaemonSet pod时才会创建新的DaemonSet pod。这与Kubernetes 1.5或更早版本中DaemonSet的行为相同。</li>
+<li>RollingUpdate：使用RollingUpdate 更新策略，在更新DaemonSet模板后，旧的DaemonSet pod将被终止，并且将以受控方式自动创建新的DaemonSet pod。</li>
+</ul>
+<h2 id="Job与CronJob"><a href="#Job与CronJob" class="headerlink" title="Job与CronJob"></a>Job与CronJob</h2><p>&emsp;&emsp;Job 负责处理任务，即仅执行一次的任务，它保证批处理任务的一个或多个 Pod 成功结束。而<code>CronJob</code> 则就是在 Job 上加上了时间调度。<br>Job特点：</p>
+<ul>
+<li>一次性执行任务，类似Linux中的job</li>
+<li>应用场景：如离线数据处理，视频解码等业务</li>
+</ul>
+<p>模板示例：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">batch/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Job</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">pi</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">spec:</span></span><br><span class="line">      <span class="attr">containers:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">pi</span></span><br><span class="line">          <span class="attr">image:</span> <span class="string">perl:slim</span></span><br><span class="line">          <span class="attr">command:</span> [<span class="string">&quot;perl&quot;</span>, <span class="string">&quot;-Mbignum=bpi&quot;</span>, <span class="string">&quot;-wle&quot;</span>, <span class="string">&quot;print bpi(6000)&quot;</span>]</span><br><span class="line">      <span class="attr">restartPolicy:</span> <span class="string">Never</span></span><br><span class="line">  <span class="attr">backoffLimit:</span> <span class="number">4</span></span><br></pre></td></tr></table></figure>
+
+<p>通过模板可知，Job 中也是一个 Pod 模板，和之前的 Deployment、StatefulSet 之类的是一致的，只是 Pod 中的容器要求是一个任务，而不是一个常驻前台的进程了，因为它是需要退出的。<br>另外值得注意的是 Job 的 RestartPolicy 仅支持 Never 和 OnFailure 两种，不支持 Always，由于 Job 就相当于来执行一个批处理任务，执行完就结束了，如果 Always 的话就陷入了死循环了。</p>
+<h3 id="backoffLimit说明"><a href="#backoffLimit说明" class="headerlink" title="backoffLimit说明"></a>backoffLimit说明</h3><p><code>.spec.backoffLimit</code>用于设置Job的容错次数，默认值为6。当Job运行的Pod失败次数到达<code>.spec.backoffLimit</code>次时，Job Controller不再新建Pod，直接停止运行这个Job，将其运行结果标记为<code>Failure</code>。另外，Pod运行失败后再次运行的时间间隔呈递增状态，例如10s，20s，40s。。。</p>
+<h3 id="CronJob"><a href="#CronJob" class="headerlink" title="CronJob"></a>CronJob</h3><p>资源文件中Kind 变成了<code>CronJob</code> 了，要注意的是<code>.spec.schedule</code>字段是必须填写的，用来指定任务运行的周期，格式就和 <code>crontab</code> 一样，另外一个字段是<code>.spec.jobTemplate</code>, 用来指定需要运行的任务，格式当然和 <code>Job</code> 是一致的。</p>
+<p><code>.spec.successfulJobsHistoryLimit</code> 和 <code>.spec.failedJobsHistoryLimit</code>，表示历史限制，是可选的字段，指定可以保留多少完成和失败的 Job，默认没有限制，所有成功和失败的 Job 都会被保留。</p>
+<h2 id="StatefullSet"><a href="#StatefullSet" class="headerlink" title="StatefullSet"></a>StatefullSet</h2><p>&emsp;&emsp;在kubernetes系统中，Pod的管理对象RC，Deployment，DaemonSet和Job都面向无状态的服务，但现实中有很多服务时有状态的，比如一些集群服务，例如mysql集群，集群一般都会有这四个特点：</p>
+<ol>
+<li>每个节点都是有固定的身份ID，集群中的成员可以相互发现并通信</li>
+<li>集群的规模是比较固定的，集群规模不能随意变动</li>
+<li>集群中的每个节点都是有状态的，通常会持久化数据到永久存储中</li>
+<li>如果磁盘损坏，则集群里的某个节点无法正常运行，集群功能受损</li>
+</ol>
+<p>&emsp;&emsp;如果通过RC或Deployment控制Pod副本数量来实现上述有状态的集群，就会发现第一点是无法满足的，因为Pod名称和ip是随机产生的，并且各Pod中的共享存储中的数据不能都动，因此StatefulSet在这种情况下就派上用场了，那么StatefulSet具有以下特性：</p>
+<ul>
+<li>StatefulSet里的每个Pod都有稳定，唯一的网络标识，可以用来发现集群内的其它成员，假设， StatefulSet的名称为lagou，那么第1个Pod叫lagou-0，第2个叫lagou-1，以此类推</li>
+<li>StatefulSet控制的Pod副本的启停顺序是受控的，操作第N个Pod时，前N-1个Pod已经是运行且准备状态</li>
+<li>StatefulSet里的Pod采用稳定的持久化存储卷，通过PV或PVC来实现，删除Pod时默认不会删除与 StatefulSet相关的存储卷（为了保证数据的安全）</li>
+</ul>
+<p>StatefulSet除了要与PV卷捆绑使用以存储Pod的状态数据，还要与Headless，Service配合使用，每个StatefulSet定义中都要生命它属于哪个Handless Service，Handless Service与普通Service的关键区别在于，它没有Cluster IP</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">Liu Fujun</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://liu-fujun.github.io/2022/02/08/k8s-controller/">https://liu-fujun.github.io/2022/02/08/k8s-controller/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://liu-fujun.github.io" target="_blank">Liu's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/k8s/">k8s</a><a class="post-meta__tags" href="/tags/kubernetes/">kubernetes</a><a class="post-meta__tags" href="/tags/%E5%AE%B9%E5%99%A8/">容器</a><a class="post-meta__tags" href="/tags/controller/">controller</a></div><div class="post_share"><div class="social-share" data-image="/img/k8s.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏</div><div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="/img/wechat.jpg" target="_blank"><img class="post-qr-code-img" src="/img/wechat.jpg" alt="wechat"/></a><div class="post-qr-code-desc">wechat</div></li></ul></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2022/02/08/k8s-service/"><img class="prev-cover" src="/img/k8s.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">k8s service 笔记</div></div></a></div><div class="next-post pull-right"><a href="/2022/02/08/k8s-pod-life/"><img class="next-cover" src="/img/k8s.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">k8s中pod生命周期详解</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2022/02/08/k8s-pod-life/" title="k8s中pod生命周期详解"><img class="cover" src="/img/k8s.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-08</div><div class="title">k8s中pod生命周期详解</div></div></a></div><div><a href="/2022/02/07/k8s-pod/" title="k8s中pod简介"><img class="cover" src="/img/k8s.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-07</div><div class="title">k8s中pod简介</div></div></a></div><div><a href="/2022/02/08/k8s-service/" title="k8s service 笔记"><img class="cover" src="/img/k8s.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-08</div><div class="title">k8s service 笔记</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/LFJ.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Liu Fujun</div><div class="author-info__description"></div></div><div class="card-info-data is-center"><div class="card-info-data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a></div><div class="card-info-data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a></div><div class="card-info-data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/liu-fujun" target="_blank" title="Github"><i class="fab fa-github"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎大家光临小站~</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81Pod%E6%8E%A7%E5%88%B6%E5%99%A8"><span class="toc-number">1.</span> <span class="toc-text">常见Pod控制器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ReplicaSet"><span class="toc-number">2.</span> <span class="toc-text">ReplicaSet</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ReplicationController"><span class="toc-number">2.1.</span> <span class="toc-text">ReplicationController</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ReplicaSet%E6%A8%A1%E6%9D%BF%E8%AF%B4%E6%98%8E"><span class="toc-number">2.2.</span> <span class="toc-text">ReplicaSet模板说明</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Deployment"><span class="toc-number">3.</span> <span class="toc-text">Deployment</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Deployment%E6%A8%A1%E6%9D%BF%E8%AF%B4%E6%98%8E"><span class="toc-number">3.1.</span> <span class="toc-text">Deployment模板说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E6%9B%B4%E6%96%B0%E5%91%BD%E4%BB%A4"><span class="toc-number">3.2.</span> <span class="toc-text">镜像更新命令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BB%9A%E5%8A%A8%E6%9B%B4%E6%96%B0"><span class="toc-number">3.3.</span> <span class="toc-text">滚动更新</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%87%91%E4%B8%9D%E9%9B%80%E5%8F%91%E5%B8%83"><span class="toc-number">3.3.1.</span> <span class="toc-text">金丝雀发布</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%88%E6%9C%AC%E5%9B%9E%E9%80%80"><span class="toc-number">3.4.</span> <span class="toc-text">版本回退</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#rollout%E5%B8%B8%E8%A7%81%E5%91%BD%E4%BB%A4"><span class="toc-number">3.4.1.</span> <span class="toc-text">rollout常见命令</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9B%B4%E6%96%B0%E7%AD%96%E7%95%A5"><span class="toc-number">3.5.</span> <span class="toc-text">更新策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#DaemonSet"><span class="toc-number">4.</span> <span class="toc-text">DaemonSet</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Job%E4%B8%8ECronJob"><span class="toc-number">5.</span> <span class="toc-text">Job与CronJob</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#backoffLimit%E8%AF%B4%E6%98%8E"><span class="toc-number">5.1.</span> <span class="toc-text">backoffLimit说明</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CronJob"><span class="toc-number">5.2.</span> <span class="toc-text">CronJob</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#StatefullSet"><span class="toc-number">6.</span> <span class="toc-text">StatefullSet</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2022/02/09/deploy-desc/" title="关于蓝绿发布、灰度以及滚动发布的记录"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="关于蓝绿发布、灰度以及滚动发布的记录"/></a><div class="content"><a class="title" href="/2022/02/09/deploy-desc/" title="关于蓝绿发布、灰度以及滚动发布的记录">关于蓝绿发布、灰度以及滚动发布的记录</a><time datetime="2022-02-09T07:57:59.000Z" title="发表于 2022-02-09 15:57:59">2022-02-09</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-schedule/" title="k8s-schedule"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-schedule"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-schedule/" title="k8s-schedule">k8s-schedule</a><time datetime="2022-02-08T07:43:14.000Z" title="发表于 2022-02-08 15:43:14">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-network/" title="k8s-network"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-network"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-network/" title="k8s-network">k8s-network</a><time datetime="2022-02-08T07:42:48.000Z" title="发表于 2022-02-08 15:42:48">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-security/" title="k8s-security"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-security"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-security/" title="k8s-security">k8s-security</a><time datetime="2022-02-08T07:42:37.000Z" title="发表于 2022-02-08 15:42:37">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-config/" title="k8s-config"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-config"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-config/" title="k8s-config">k8s-config</a><time datetime="2022-02-08T07:42:27.000Z" title="发表于 2022-02-08 15:42:27">2022-02-08</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2022 By Liu Fujun</div><!--if theme.footer.copyright--><!--  .framework-info--><!--    span= _p('footer.framework') + ' '--><!--    a(href='https://hexo.io')= 'Hexo'--><!--    span.footer-separator |--><!--    span= _p('footer.theme') + ' '--><!--    a(href='https://github.com/jerryc127/hexo-theme-butterfly')= 'Butterfly'--><div class="footer_custom_text">每天进步一点点</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">本地搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div></div></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.js"></script><script src="/js/search/local-search.js"></script><div class="js-pjax"><script>(() => {
+  const $mermaidWrap = document.querySelectorAll('#article-container .mermaid-wrap')
+  if ($mermaidWrap.length) {
+    window.runMermaid = () => {
+      window.loadMermaid = true
+      const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+      Array.from($mermaidWrap).forEach((item, index) => {
+        const mermaidSrc = item.firstElementChild
+        const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+        const mermaidID = 'mermaid-' + index
+        const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+        mermaid.mermaidAPI.render(mermaidID, mermaidDefinition, (svgCode) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svgCode)
+        })
+      })
+    }
+
+    const loadMermaid = () => {
+      window.loadMermaid ? runMermaid() : getScript('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js').then(runMermaid)
+    }
+
+    window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+  }
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>k8s中pod生命周期详解 | Liu's Blog</title><meta name="keywords" content="k8s,kubernetes,pod,容器"><meta name="author" content="Liu Fujun"><meta name="copyright" content="Liu Fujun"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Pod阶段&amp;emsp;&amp;emsp;使用kubectl get pods命令获取到的结果中，STATUS被称之为phase(个人理解为阶段，不过网上很多翻译为相位，相位的解释跟波有关，可自行百度)。&amp;emsp;&amp;emsp;当然也可以通过kubectl explain pod.status命令来查看Pod状态的枚举值，Pod的状态定义在 PodStatus 对象中，其中有一个phase字段。&amp;emsp">
+<meta property="og:type" content="article">
+<meta property="og:title" content="k8s中pod生命周期详解">
+<meta property="og:url" content="https://liu-fujun.github.io/2022/02/08/k8s-pod-life/index.html">
+<meta property="og:site_name" content="Liu&#39;s Blog">
+<meta property="og:description" content="Pod阶段&amp;emsp;&amp;emsp;使用kubectl get pods命令获取到的结果中，STATUS被称之为phase(个人理解为阶段，不过网上很多翻译为相位，相位的解释跟波有关，可自行百度)。&amp;emsp;&amp;emsp;当然也可以通过kubectl explain pod.status命令来查看Pod状态的枚举值，Pod的状态定义在 PodStatus 对象中，其中有一个phase字段。&amp;emsp">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://liu-fujun.github.io/img/k8s.png">
+<meta property="article:published_time" content="2022-02-08T02:12:57.000Z">
+<meta property="article:modified_time" content="2022-02-09T06:33:14.823Z">
+<meta property="article:author" content="Liu Fujun">
+<meta property="article:tag" content="k8s">
+<meta property="article:tag" content="kubernetes">
+<meta property="article:tag" content="pod">
+<meta property="article:tag" content="容器">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://liu-fujun.github.io/img/k8s.png"><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://liu-fujun.github.io/2022/02/08/k8s-pod-life/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":false,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'k8s中pod生命周期详解',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-02-09 14:33:14'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.0.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/LFJ.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data is-center"><div class="data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a></div><div class="data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a></div><div class="data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/"><i class="fa-fw fas fa-code"></i><span> 技术</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E5%85%B6%E4%BB%96/"><i class="fa-fw fas fa-folder"></i><span> 其他</span></a></div><div class="menus_item"><a class="site-page group hide" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 管理</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/k8s.png')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Liu's Blog</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/"><i class="fa-fw fas fa-code"></i><span> 技术</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E5%85%B6%E4%BB%96/"><i class="fa-fw fas fa-folder"></i><span> 其他</span></a></div><div class="menus_item"><a class="site-page group hide" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 管理</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">k8s中pod生命周期详解</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-02-08T02:12:57.000Z" title="发表于 2022-02-08 10:12:57">2022-02-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-02-09T06:33:14.823Z" title="更新于 2022-02-09 14:33:14">2022-02-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/">技术文档</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="k8s中pod生命周期详解"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="Pod阶段"><a href="#Pod阶段" class="headerlink" title="Pod阶段"></a>Pod阶段</h2><p>&emsp;&emsp;使用<code>kubectl get pods</code>命令获取到的结果中，<code>STATUS</code>被称之为<code>phase</code>(个人理解为阶段，不过网上很多翻译为相位，相位的解释跟波有关，可自行百度)。<br>&emsp;&emsp;当然也可以通过<code>kubectl explain pod.status</code>命令来查看Pod状态的枚举值，Pod的状态定义在 PodStatus 对象中，其中有一个<code>phase</code>字段。<br>&emsp;&emsp;无论是手动创建还是通过控制器创建Pod，Pod对象总是应该处于其生命进程中以下几个阶段<code>phase</code>之一：</p>
+<ul>
+<li>挂起（Pending）：<code>apiserver</code>创建了pod资源对象并存入etcd中，但是还没有被调度器调度到合适的节点或者镜像正在下载中；</li>
+<li>运行中（Running）：Pod已经被调度至某节点，并且所有容器都已经被<code>kubelet</code>创建完成。至少有一个容器正在运行，或者正处于启动或重启状态；</li>
+<li>成功（Succeeded）：Pod中的所有容器都被成功终止，并且不会再重启；</li>
+<li>失败（Failed）：Pod中的所有容器都已终止了，但至少有一个容器是因为终止失败，容器以非0状态退出或者被系统终止；</li>
+<li>未知（Unknown）：因为某些原因<code>apiserver</code>无法正常获取到Pod对象的状态信息，通常是因为与Pod所在节点通信失败导致的；</li>
+</ul>
+<p>Pod在生命周期中状态的变化如下图：<br><img src="/2022/02/08/k8s-pod-life/pod-status.png" alt="pod-phase.png"></p>
+<h2 id="生命周期"><a href="#生命周期" class="headerlink" title="生命周期"></a>生命周期</h2><p><img src="/2022/02/08/k8s-pod-life/pod-life.png" alt="pod.png"><br>&emsp;&emsp;Pod的生命周期如图所示，具体解释如下：</p>
+<h3 id="initContainer"><a href="#initContainer" class="headerlink" title="initContainer"></a>initContainer</h3><p>&emsp;&emsp;Init Container就是用来做初始化工作的容器，可以是一个或者多个，如果有多个的话，这些容器会按定义的顺序依次执行，只有所有的`初始化容器执行完之后，主容器才会被启动。<br>&emsp;&emsp;特点如下：</p>
+<ol>
+<li>initC总是运行到成功完成为止。</li>
+<li>每个initC容器都必须在下一个initC启动之前成功完成。</li>
+<li>如果initC容器运行失败，K8S集群会不断的重启该pod，直到initC容器成功为止。</li>
+<li>如果pod对应的restartPolicy为never，它就不会重新启动。</li>
+</ol>
+<p>&emsp;&emsp;其对应在资源清单yaml文件中，就是<code>spec</code>中<code>initContainers</code>配置。</p>
+<p>&emsp;&emsp;初始化容器的应用场景：</p>
+<ul>
+<li>等待其他模块 Ready：解决服务之间的依赖问题，比如Web 服务依赖于数据库服务，但是在启动这个 Web 服务的时候并不能保证数据库服务已经就绪，就可能会出现一段时间内 Web 服务连接数据库异常。要解决这个问题的话，就可以在 Web 服务的 Pod 中使用一个 InitContainer，去检查数据库是否已经准备好了，检查成功后Web 服务才被启动起来，这个时候去连接数据库就不会有问题了。</li>
+<li>做初始化配置：比如集群里检测所有已经存在的成员节点，为主容器准备好集群的配置信息，这样主容器起来后就能用这个配置信息加入集群。</li>
+<li>其它场景：如将 Pod 注册到一个中央数据库、配置中心等。</li>
+</ul>
+<h3 id="mainContainer"><a href="#mainContainer" class="headerlink" title="mainContainer"></a>mainContainer</h3><p>&emsp;&emsp;当initC都成功完成之后，就会进行主容器的创建，例如上面的例子，web服务就是主容器。</p>
+<h3 id="健康检查"><a href="#健康检查" class="headerlink" title="健康检查"></a>健康检查</h3><p>&emsp;&emsp;监控检查分为两类：</p>
+<ul>
+<li>readinessProbe(就绪检测)：检测容器是否准备好服务请求，只有当Pod中的容器都处于就绪状态的时候，kubelet才会认定该Pod处于就绪状态。如果就绪探测失败，端点控制器将从与Pod匹配的所有Service的端点中删除该Pod的IP地址。初始延迟之前的就绪状态默认为Failure。如果容器不提供就绪探针，则默认状态为Success。</li>
+<li>livenessProbe(存活检测)：检测容器是否正在运行。如果存活探测失败，则kubelet会杀死容器，并且容器将受到其<code>重启策略</code>的影响。如果容器不提供存活探针，则默认状态为Success。</li>
+</ul>
+<p>&emsp;&emsp;其探测的方法有以下三种：</p>
+<ul>
+<li>ExecAction：在容器内执行指定命令。如果命令退出时返回码为 0 则认为诊断成功。</li>
+<li>TCPSocketAction：对指定端口上的容器的 IP 地址进行 TCP 检查。如果端口打开，则诊断被认为是成功的。</li>
+<li>HTTPGetAction：对指定的端口和路径上的容器的 IP 地址执行 HTTP Get 请求。如果响应的状态码大于等于200 且小于 400，则诊断被认为是成功的。</li>
+</ul>
+<p>任何一种探测方式都可能存在三种结果：</p>
+<ul>
+<li>success(成功)：容器通过了诊断；</li>
+<li>failure(失败)：容器未通过了诊断；</li>
+<li>unknown(未知)：诊断失败，因此不会采取任何行动；</li>
+</ul>
+<p>具体配置如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># exec方式</span></span><br><span class="line"><span class="attr">livenessProbe:</span></span><br><span class="line">  <span class="attr">exec:</span></span><br><span class="line">    <span class="attr">command:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">cat</span> </span><br><span class="line">    <span class="bullet">-</span> <span class="string">/app/healthz</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># httpGet方式</span></span><br><span class="line"><span class="attr">livenessProbe:</span></span><br><span class="line">  <span class="attr">httpGet:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/app/healthz</span></span><br><span class="line">    <span class="attr">port:</span> <span class="number">80</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># socket方式</span></span><br><span class="line"><span class="attr">livenessProbe:</span></span><br><span class="line">  <span class="attr">tcpSocket:</span></span><br><span class="line">    <span class="attr">port:</span> <span class="number">80</span></span><br></pre></td></tr></table></figure>
+
+<p>一般就绪探针会在启动Pod一段时间后才开始第一次的就绪探测，之后做周期性探测。参数如下：</p>
+<ul>
+<li>initialDelaySeconds：在初始化容器多少秒后开始第一次就绪探测；</li>
+<li>timeoutSeconds：如果该次就绪探测超过多少秒后还未成功，判定为超时，该次探测失败，Pod不就绪。默认值1，最小值1；</li>
+<li>periodSeconds：如果Pod未就绪，则每隔多少秒周期性的做就绪探测。默认值10，最小值1；</li>
+<li>failureThreshold：如果容器之前探测成功，后续连续几次探测失败，则确定容器未就绪。默认值3，最小值1；</li>
+<li>successThreshold：如果容器之前探测失败，后续连续几次探测成功，则确定容器就绪。默认值1，最小值1。</li>
+</ul>
+<h3 id="Pod-Hook"><a href="#Pod-Hook" class="headerlink" title="Pod Hook"></a>Pod Hook</h3><p>&emsp;&emsp;K8s提供了生命周期的钩子<code>Pod Hook</code>，Pod Hook 是由 kubelet 发起的，当容器中的进程启动前或者终止之前运行。</p>
+<ul>
+<li>PostStart： 于容器创建完成之后立即运行的钩子处理器（handler），不过k8s无法确保它一定会于容器中的entrypoint之前运行；</li>
+<li>PreStop：于容器终止操作之前立即运行的钩子处理器，它以同步的方式调用，因此在其完成之前会阻塞删除容器的操作调用；</li>
+</ul>
+<h2 id="创建过程"><a href="#创建过程" class="headerlink" title="创建过程"></a>创建过程</h2><p>以下为一个pod资源对象的典型创建过程：</p>
+<ol>
+<li>用户通过kubectl或其他api客户端提交pod spec给api server；</li>
+<li>api server尝试着将pod对象的相关信息存入etcd中，待写入操作执行完成，api server即会返回确认信息至客户端；</li>
+<li>api server开始反映etcd中的状态变化；</li>
+<li>所有的k8s组件均使用watch机制来跟踪检查api server上的相关变动；</li>
+<li>kube-scheduler通过其watch觉察到api server创建了新的pod对象但尚未绑定至任何工作节点；</li>
+<li>kube-scheduler为pod对象挑选一个工作节点并将结果信息更新至api server；</li>
+<li>调度结果信息由api server更新至etcd，而且api server也开始反映此pod对象的调度结果；</li>
+<li>pod被调度到目标工作节点上的kubelet尝试在当前节点上调用docker启动容器，并将容器的结果状态回送至api server；</li>
+<li>api server将pod状态信息存入etcd中；</li>
+<li>在etcd确认写入操作成功完成后，api server将确认信息发送至相关的kubelet；</li>
+</ol>
+<p><img src="/2022/02/08/k8s-pod-life/pod-create.png" alt="pod-create.png"></p>
+<h2 id="重启策略"><a href="#重启策略" class="headerlink" title="重启策略"></a>重启策略</h2><p>&emsp;&emsp;容器程序发生奔溃或容器申请超出限制的资源等原因都可能会导致pod对象的终止，此时是否应该重建该pod对象则取决于其重启策略（restartPolicy）属性的定义：</p>
+<ul>
+<li>Always：但凡pod对象终止就将其重启，此为默认设定</li>
+<li>OnFailure：尽在pod对象出现错误时方才将其重启</li>
+<li>Never：从不重启。</li>
+</ul>
+<p>&emsp;&emsp;restartPolicy适用于pod对象中的所有容器，而且它仅用于控制在同一节点上重新启动pod对象的相关容器。首次需要重启的容器，将在其需要时立即进行重启，随后再次需要重启的操作将由kubelet延迟一段时间后进行，且反复的重启操作的延迟时长以此为10s、20s、40s、80s、160s和300s，300s是最大延迟时长，上限为 5 分钟，并在成功执行 10 分钟后重置。<br>&emsp;&emsp;事实上，一旦绑定到一个节点，pod对象将永远不会重新绑定到另一个节点，它要么被重启，要么终止，直到节点发生故障或被删除。</p>
+<p>不同类型的的控制器可以控制 Pod 的重启策略：</p>
+<ul>
+<li>Job：适用于一次性任务如批量计算，任务结束后 Pod 会被此类控制器清除。Job 的重启策略只能是”OnFailure”或者”Never”。</li>
+<li>Replication Controller, ReplicaSet, or Deployment，此类控制器希望 Pod 一直运行下去，它们的重启策略只能是”Always”。</li>
+<li>DaemonSet：每个节点上启动一个 Pod，很明显此类控制器的重启策略也应该是”Always”。</li>
+</ul>
+<h2 id="终止过程"><a href="#终止过程" class="headerlink" title="终止过程"></a>终止过程</h2><p>&emsp;&emsp;当用户提交删除请求之后，系统就会进行强制删除操作的宽限期倒计时，并将TERM信息发送给pod对象的每个容器中的主进程。宽限期倒计时结束后，这些进程将收到强制终止的KILL信号，pod对象随即也将由api server删除，如果在等待进程终止的过程中，kubelet或容器管理器发生了重启，那么终止操作会重新获得一个满额的删除宽限期并重新执行删除操作。<br>一个典型的pod对象终止流程具体如下：</p>
+<ol>
+<li>用户发送删除pod对象的命令；</li>
+<li>api服务器中的pod对象会随着时间的推移而更新，在宽限期内（默认30s），pod被视为dead；</li>
+<li>将pod标记为terminating状态；</li>
+<li>与第三步同时运行，kubelet在监控到pod对象转为terminating状态的同时启动pod关闭过程；</li>
+<li>与第三步同时运行，端点控制器监控到pod对象的关闭行为时将其从所有匹配到此端点的service资源的端点列表中移除；</li>
+<li>如果当前pod对象定义了preStop钩子处理器，则在其标记为terminating后即会以同步的方式启动执行；若宽限期结束后，preStop仍未执行结束，则第二步会被重新执行并额外获取一个时长为2s的小宽限期；</li>
+<li>pod对象中的容器进程收到TERM信号；</li>
+<li>宽限期结束后，若存在任何一个仍在运行的进程，那么pod对象即会收到SIGKILL信号；</li>
+<li>kubelet请求api server将此pod资源的宽限期设置为0从而完成删除操作，它变得对用户不再可见；</li>
+</ol>
+<p>默认情况下，所有删除操作的宽限期都是30s，不过，kubectl delete命令可以使用“–grace-period=”选项自定义其时长，若使用0值则表示直接强制删除指定的资源，不过此时需要同时使用命令“–forece”选项。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">Liu Fujun</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://liu-fujun.github.io/2022/02/08/k8s-pod-life/">https://liu-fujun.github.io/2022/02/08/k8s-pod-life/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://liu-fujun.github.io" target="_blank">Liu's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/k8s/">k8s</a><a class="post-meta__tags" href="/tags/kubernetes/">kubernetes</a><a class="post-meta__tags" href="/tags/pod/">pod</a><a class="post-meta__tags" href="/tags/%E5%AE%B9%E5%99%A8/">容器</a></div><div class="post_share"><div class="social-share" data-image="/img/k8s.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏</div><div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="/img/wechat.jpg" target="_blank"><img class="post-qr-code-img" src="/img/wechat.jpg" alt="wechat"/></a><div class="post-qr-code-desc">wechat</div></li></ul></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2022/02/08/k8s-controller/"><img class="prev-cover" src="/img/k8s.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">k8s中控制器详解</div></div></a></div><div class="next-post pull-right"><a href="/2022/02/07/k8s-pod/"><img class="next-cover" src="/img/k8s.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">k8s中pod简介</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2022/02/07/k8s-pod/" title="k8s中pod简介"><img class="cover" src="/img/k8s.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-07</div><div class="title">k8s中pod简介</div></div></a></div><div><a href="/2022/02/08/k8s-service/" title="k8s service 笔记"><img class="cover" src="/img/k8s.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-08</div><div class="title">k8s service 笔记</div></div></a></div><div><a href="/2022/02/08/k8s-controller/" title="k8s中控制器详解"><img class="cover" src="/img/k8s.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-02-08</div><div class="title">k8s中控制器详解</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/LFJ.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Liu Fujun</div><div class="author-info__description"></div></div><div class="card-info-data is-center"><div class="card-info-data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a></div><div class="card-info-data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a></div><div class="card-info-data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/liu-fujun" target="_blank" title="Github"><i class="fab fa-github"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎大家光临小站~</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Pod%E9%98%B6%E6%AE%B5"><span class="toc-number">1.</span> <span class="toc-text">Pod阶段</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F"><span class="toc-number">2.</span> <span class="toc-text">生命周期</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#initContainer"><span class="toc-number">2.1.</span> <span class="toc-text">initContainer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#mainContainer"><span class="toc-number">2.2.</span> <span class="toc-text">mainContainer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5"><span class="toc-number">2.3.</span> <span class="toc-text">健康检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Pod-Hook"><span class="toc-number">2.4.</span> <span class="toc-text">Pod Hook</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E8%BF%87%E7%A8%8B"><span class="toc-number">3.</span> <span class="toc-text">创建过程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%87%8D%E5%90%AF%E7%AD%96%E7%95%A5"><span class="toc-number">4.</span> <span class="toc-text">重启策略</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%88%E6%AD%A2%E8%BF%87%E7%A8%8B"><span class="toc-number">5.</span> <span class="toc-text">终止过程</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2022/02/09/deploy-desc/" title="关于蓝绿发布、灰度以及滚动发布的记录"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="关于蓝绿发布、灰度以及滚动发布的记录"/></a><div class="content"><a class="title" href="/2022/02/09/deploy-desc/" title="关于蓝绿发布、灰度以及滚动发布的记录">关于蓝绿发布、灰度以及滚动发布的记录</a><time datetime="2022-02-09T07:57:59.000Z" title="发表于 2022-02-09 15:57:59">2022-02-09</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-schedule/" title="k8s-schedule"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-schedule"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-schedule/" title="k8s-schedule">k8s-schedule</a><time datetime="2022-02-08T07:43:14.000Z" title="发表于 2022-02-08 15:43:14">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-network/" title="k8s-network"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-network"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-network/" title="k8s-network">k8s-network</a><time datetime="2022-02-08T07:42:48.000Z" title="发表于 2022-02-08 15:42:48">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-security/" title="k8s-security"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-security"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-security/" title="k8s-security">k8s-security</a><time datetime="2022-02-08T07:42:37.000Z" title="发表于 2022-02-08 15:42:37">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s-config/" title="k8s-config"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-config"/></a><div class="content"><a class="title" href="/2022/02/08/k8s-config/" title="k8s-config">k8s-config</a><time datetime="2022-02-08T07:42:27.000Z" title="发表于 2022-02-08 15:42:27">2022-02-08</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2022 By Liu Fujun</div><!--if theme.footer.copyright--><!--  .framework-info--><!--    span= _p('footer.framework') + ' '--><!--    a(href='https://hexo.io')= 'Hexo'--><!--    span.footer-separator |--><!--    span= _p('footer.theme') + ' '--><!--    a(href='https://github.com/jerryc127/hexo-theme-butterfly')= 'Butterfly'--><div class="footer_custom_text">每天进步一点点</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">本地搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div></div></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.js"></script><script src="/js/search/local-search.js"></script><div class="js-pjax"><script>(() => {
+  const $mermaidWrap = document.querySelectorAll('#article-container .mermaid-wrap')
+  if ($mermaidWrap.length) {
+    window.runMermaid = () => {
+      window.loadMermaid = true
+      const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+      Array.from($mermaidWrap).forEach((item, index) => {
+        const mermaidSrc = item.firstElementChild
+        const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+        const mermaidID = 'mermaid-' + index
+        const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+        mermaid.mermaidAPI.render(mermaidID, mermaidDefinition, (svgCode) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svgCode)
+        })
+      })
+    }
+
+    const loadMermaid = () => {
+      window.loadMermaid ? runMermaid() : getScript('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js').then(runMermaid)
+    }
+
+    window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+  }
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
