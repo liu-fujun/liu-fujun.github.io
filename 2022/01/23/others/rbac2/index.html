@@ -1,0 +1,205 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>关于RBAC的总结-下 | Liu's Blog</title><meta name="keywords" content="RBAC,权限"><meta name="author" content="Liu Fujun"><meta name="copyright" content="Liu Fujun"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="关于RBAC实现的方案记录">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于RBAC的总结-下">
+<meta property="og:url" content="https://liu-fujun.github.io/2022/01/23/others/rbac2/index.html">
+<meta property="og:site_name" content="Liu&#39;s Blog">
+<meta property="og:description" content="关于RBAC实现的方案记录">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://liu-fujun.github.io/img/RBAC.png">
+<meta property="article:published_time" content="2022-01-23T07:44:33.000Z">
+<meta property="article:modified_time" content="2022-01-26T06:50:08.463Z">
+<meta property="article:author" content="Liu Fujun">
+<meta property="article:tag" content="RBAC">
+<meta property="article:tag" content="权限">
+<meta property="article:tag" content="角色">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://liu-fujun.github.io/img/RBAC.png"><link rel="shortcut icon" href="/img/favicon.ico"><link rel="canonical" href="https://liu-fujun.github.io/2022/01/23/others/rbac2/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":false,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '关于RBAC的总结-下',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-01-26 14:50:08'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/css/iconfont.css"><meta name="generator" content="Hexo 6.0.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/LFJ.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data is-center"><div class="data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">21</div></a></div><div class="data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a></div><div class="data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">5</div></a></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw iconfont icon-shouye1"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw iconfont icon-KJ_005"></i><span> 技术</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page group" href="javascript:void(0);"><i class="fa-fw iconfont icon-yuyan"></i><span> 语言</span><i class="iconfont icon-chevron-right"></i></a><ul class="menus_item_child1"><li><a class="site-page child" href="/categories/java/"><i class="fa-fw iconfont icon-java"></i><span> JAVA</span></a></li><li><a class="site-page child" href="/categories/go/"><i class="fa-fw iconfont icon-golang"></i><span> Golang</span></a></li></ul></li><li><a class="site-page group" href="javascript:void(0);"><i class="fa-fw iconfont icon-rongqi"></i><span> 容器</span><i class="iconfont icon-chevron-right"></i></a><ul class="menus_item_child1"><li><a class="site-page child" href="/categories/k8s/"><i class="fa-fw iconfont icon-k8s"></i><span> K8s</span></a></li></ul></li><li><a class="site-page child" href="/categories/openstack/"><i class="fa-fw iconfont icon-openstack"></i><span> OpenStack</span></a></li><li><a class="site-page child" href="/categories/%E7%AE%97%E6%B3%95/"><i class="fa-fw iconfont icon-suanfaku"></i><span> 算法</span></a></li><li><a class="site-page child" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/"><i class="fa-fw iconfont icon-solution"></i><span> 其他</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/categories/%E6%97%A5%E5%B8%B8/"><i class="fa-fw iconfont icon-shenghuo"></i><span> 生活</span></a></div><div class="menus_item"><a class="site-page group hide" href="javascript:void(0);"><i class="fa-fw iconfont icon-list"></i><span> 管理</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/tags/"><i class="fa-fw iconfont icon-24gf-tags2"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw iconfont icon-fenlei"></i><span> 分类</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw iconfont icon-guidangcunchu"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw iconfont icon-lianjie"></i><span> 链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw iconfont icon-guanyuwo"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/RBAC.png')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Liu's Blog</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw iconfont icon-shouye1"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw iconfont icon-KJ_005"></i><span> 技术</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page group" href="javascript:void(0);"><i class="fa-fw iconfont icon-yuyan"></i><span> 语言</span><i class="iconfont icon-chevron-right"></i></a><ul class="menus_item_child1"><li><a class="site-page child" href="/categories/java/"><i class="fa-fw iconfont icon-java"></i><span> JAVA</span></a></li><li><a class="site-page child" href="/categories/go/"><i class="fa-fw iconfont icon-golang"></i><span> Golang</span></a></li></ul></li><li><a class="site-page group" href="javascript:void(0);"><i class="fa-fw iconfont icon-rongqi"></i><span> 容器</span><i class="iconfont icon-chevron-right"></i></a><ul class="menus_item_child1"><li><a class="site-page child" href="/categories/k8s/"><i class="fa-fw iconfont icon-k8s"></i><span> K8s</span></a></li></ul></li><li><a class="site-page child" href="/categories/openstack/"><i class="fa-fw iconfont icon-openstack"></i><span> OpenStack</span></a></li><li><a class="site-page child" href="/categories/%E7%AE%97%E6%B3%95/"><i class="fa-fw iconfont icon-suanfaku"></i><span> 算法</span></a></li><li><a class="site-page child" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/"><i class="fa-fw iconfont icon-solution"></i><span> 其他</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/categories/%E6%97%A5%E5%B8%B8/"><i class="fa-fw iconfont icon-shenghuo"></i><span> 生活</span></a></div><div class="menus_item"><a class="site-page group hide" href="javascript:void(0);"><i class="fa-fw iconfont icon-list"></i><span> 管理</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/tags/"><i class="fa-fw iconfont icon-24gf-tags2"></i><span> 标签</span></a></li><li><a class="site-page child" href="/categories/"><i class="fa-fw iconfont icon-fenlei"></i><span> 分类</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw iconfont icon-guidangcunchu"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw iconfont icon-lianjie"></i><span> 链接</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw iconfont icon-guanyuwo"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">关于RBAC的总结-下</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-01-23T07:44:33.000Z" title="发表于 2022-01-23 15:44:33">2022-01-23</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-01-26T06:50:08.463Z" title="更新于 2022-01-26 14:50:08">2022-01-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%8A%80%E6%9C%AF%E6%96%87%E6%A1%A3/">技术文档</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="关于RBAC的总结-下"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="关于实现方案的简单记录"><a href="#关于实现方案的简单记录" class="headerlink" title="关于实现方案的简单记录"></a>关于实现方案的简单记录</h2><p> 通过<a href="../rbac1">关于RBAC实现的方案记录-上</a>，我们了解到了RBAC的一些基础知识，下面是实际使用中的一些案例情况。</p>
+<h2 id="1-简单模式"><a href="#1-简单模式" class="headerlink" title="1. 简单模式"></a>1. 简单模式</h2><p>在常见的平台中，一般会内置超级管理员角色以及admin/root的账号，默认拥有一些或者全部的权限。<br>同时还会内置限制，只有超级管理员才能创建角色、给角色授权，其他的角色是无权操作这些的。<br>对于这种情况，使用的就是RBAC0的模型，有以下特点：</p>
+<ol>
+<li>只有超级管理员可以创建角色、授权角色；</li>
+<li>所有角色都是平级，修改授权时，不会对其他角色造成影响；</li>
+</ol>
+<h2 id="2-级联模式"><a href="#2-级联模式" class="headerlink" title="2. 级联模式"></a>2. 级联模式</h2><p>对于级联模式，使用的就是RBAC1的模型，对角色进行分层，使得角色之间有继承关系。<br>它的特点如下：</p>
+<ol>
+<li>创建角色时，需要选父级角色；</li>
+<li>对上级角色的授权进行修改时，主要是删减，会影响到子角色，需要自动对齐；</li>
+</ol>
+<p>此时根据业务需求，就可以满足：</p>
+<ol>
+<li>允许超级管理员操作角色和权限；</li>
+<li>也允许将角色操作下放至其他角色，进行数据权限限制；</li>
+<li>超级管理员修改角色A的权限时，权限自动收敛，所以A的子角色自动变化；</li>
+</ol>
+<p>如果同时将角色和权限的操作下放至其他角色，可能会出现的情况如下：</p>
+<ol>
+<li>角色A添加了一个权限，是否允许超级管理员将其分配给其他角色；</li>
+<li>角色A修改了一个权限的配置，会影响到其他平级等角色，不安全；</li>
+</ol>
+<p>所以，一般情况下不会使用这种完全下放的权限管理，实际应用中还是超级管理员一个人操作这些模块的居多。</p>
+<h2 id="3-数据隔离"><a href="#3-数据隔离" class="headerlink" title="3.数据隔离"></a>3.数据隔离</h2><p>在工作中，我遇到的需求如下：</p>
+<blockquote>
+<p>平台需要给集团A准备好角色，集团A给子公司的管理员授权之后，子公司X自己可以创建角色、权限等，子公司之间是互相隔离。</p>
+</blockquote>
+<p>对于这种必须授权的情况，一般可以通过数据权限隔离，达到效果，即：</p>
+<ol>
+<li>权限授予之后，角色A只能看到它数据权限范围内的数据，它的操作不影响其他角色；</li>
+<li>超级管理员只管理功能权限，其他权限它不关注；</li>
+</ol>
+<p>一般的数据隔离都是通过组织架构来区分，也就是给数据标记上属于什么组织，然后通过组织树型关系，每个组织只能看到自己以及自己的子组织的数据。<br>同时角色创建时，也需要赋予组织属性，就可以实现登录后根据登录者的角色所属组织，进行查询时的数据权限过滤。</p>
+<h2 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h2><p>本次记录属于日记形式，如有变化，后续再更新~</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">Liu Fujun</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://liu-fujun.github.io/2022/01/23/others/rbac2/">https://liu-fujun.github.io/2022/01/23/others/rbac2/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://liu-fujun.github.io" target="_blank">Liu's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/RBAC/">RBAC</a><a class="post-meta__tags" href="/tags/%E6%9D%83%E9%99%90/">权限</a><a class="post-meta__tags" href="/tags/%E8%A7%92%E8%89%B2/">角色</a></div><div class="post_share"><div class="social-share" data-image="/img/RBAC.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><div class="post-reward"><div class="reward-button"><i class="fas fa-qrcode"></i> 打赏</div><div class="reward-main"><ul class="reward-all"><li class="reward-item"><a href="/img/wechat.jpg" target="_blank"><img class="post-qr-code-img" src="/img/wechat.jpg" alt="wechat"/></a><div class="post-qr-code-desc">wechat</div></li></ul></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2022/01/23/others/rbac1/"><img class="prev-cover" src="/img/RBAC.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">关于RBAC的总结-上</div></div></a></div><div class="next-post pull-right"><a href="/2021/02/09/life/life/"><img class="next-cover" src="/img/river.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">生活随笔</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2022/01/23/others/rbac1/" title="关于RBAC的总结-上"><img class="cover" src="/img/RBAC.png" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2022-01-23</div><div class="title">关于RBAC的总结-上</div></div></a></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/LFJ.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Liu Fujun</div><div class="author-info__description"></div></div><div class="card-info-data is-center"><div class="card-info-data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">21</div></a></div><div class="card-info-data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a></div><div class="card-info-data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">5</div></a></div></div><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/liu-fujun" target="_blank" title="Github"><i class="iconfont icon-github card_icon"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">欢迎大家光临小站~</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B3%E4%BA%8E%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%A1%88%E7%9A%84%E7%AE%80%E5%8D%95%E8%AE%B0%E5%BD%95"><span class="toc-number">1.</span> <span class="toc-text">关于实现方案的简单记录</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E7%AE%80%E5%8D%95%E6%A8%A1%E5%BC%8F"><span class="toc-number">2.</span> <span class="toc-text">1. 简单模式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E7%BA%A7%E8%81%94%E6%A8%A1%E5%BC%8F"><span class="toc-number">3.</span> <span class="toc-text">2. 级联模式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%95%B0%E6%8D%AE%E9%9A%94%E7%A6%BB"><span class="toc-number">4.</span> <span class="toc-text">3.数据隔离</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-number">5.</span> <span class="toc-text">其他</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2022/02/09/others/deploy-desc/" title="关于蓝绿发布、灰度以及滚动发布的记录"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="关于蓝绿发布、灰度以及滚动发布的记录"/></a><div class="content"><a class="title" href="/2022/02/09/others/deploy-desc/" title="关于蓝绿发布、灰度以及滚动发布的记录">关于蓝绿发布、灰度以及滚动发布的记录</a><time datetime="2022-02-09T07:57:59.000Z" title="发表于 2022-02-09 15:57:59">2022-02-09</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s/k8s-schedule/" title="k8s-schedule"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-schedule"/></a><div class="content"><a class="title" href="/2022/02/08/k8s/k8s-schedule/" title="k8s-schedule">k8s-schedule</a><time datetime="2022-02-08T07:43:14.000Z" title="发表于 2022-02-08 15:43:14">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s/k8s-network/" title="k8s-network"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-network"/></a><div class="content"><a class="title" href="/2022/02/08/k8s/k8s-network/" title="k8s-network">k8s-network</a><time datetime="2022-02-08T07:42:48.000Z" title="发表于 2022-02-08 15:42:48">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s/k8s-security/" title="k8s-security"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-security"/></a><div class="content"><a class="title" href="/2022/02/08/k8s/k8s-security/" title="k8s-security">k8s-security</a><time datetime="2022-02-08T07:42:37.000Z" title="发表于 2022-02-08 15:42:37">2022-02-08</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2022/02/08/k8s/k8s-config/" title="k8s-config"><img src="/img/river.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="k8s-config"/></a><div class="content"><a class="title" href="/2022/02/08/k8s/k8s-config/" title="k8s-config">k8s-config</a><time datetime="2022-02-08T07:42:27.000Z" title="发表于 2022-02-08 15:42:27">2022-02-08</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2022 By Liu Fujun</div><!--if theme.footer.copyright--><!--  .framework-info--><!--    span= _p('footer.framework') + ' '--><!--    a(href='https://hexo.io')= 'Hexo'--><!--    span.footer-separator |--><!--    span= _p('footer.theme') + ' '--><!--    a(href='https://github.com/jerryc127/hexo-theme-butterfly')= 'Butterfly'--><div class="footer_custom_text">每天进步一点点</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">本地搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div></div></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.js"></script><script src="/js/search/local-search.js"></script><div class="js-pjax"><script>(() => {
+  const $mermaidWrap = document.querySelectorAll('#article-container .mermaid-wrap')
+  if ($mermaidWrap.length) {
+    window.runMermaid = () => {
+      window.loadMermaid = true
+      const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default'
+
+      Array.from($mermaidWrap).forEach((item, index) => {
+        const mermaidSrc = item.firstElementChild
+        const mermaidThemeConfig = '%%{init:{ \'theme\':\'' + theme + '\'}}%%\n'
+        const mermaidID = 'mermaid-' + index
+        const mermaidDefinition = mermaidThemeConfig + mermaidSrc.textContent
+        mermaid.mermaidAPI.render(mermaidID, mermaidDefinition, (svgCode) => {
+          mermaidSrc.insertAdjacentHTML('afterend', svgCode)
+        })
+      })
+    }
+
+    const loadMermaid = () => {
+      window.loadMermaid ? runMermaid() : getScript('https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js').then(runMermaid)
+    }
+
+    window.pjax ? loadMermaid() : document.addEventListener('DOMContentLoaded', loadMermaid)
+  }
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
